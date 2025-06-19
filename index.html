@@ -14,6 +14,12 @@
       width: 100vw;
       height: 100vh;
       overflow: hidden;
+
+
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .controls {
@@ -53,6 +59,16 @@
     <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d240204.73196511937!2d-71.1351737024245!3d42.31450090667688!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sen!2sus!4v1749741846571!5m2!1sen!2sus" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
   </div>
   <div class="controls">
+    <div class="control-item">
+      <label class="slider-label" for="widthSlider">Width: </label>
+      <input class="slider" type="range" id="widthSlider" min="1" max="500" step="1" value="300">
+      <span class="slider-value" id="widthValue">300</span>
+    </div>
+    <div class="control-item">
+      <label class="slider-label" for="heightSlider">Height: </label>
+      <input class="slider" type="range" id="heightSlider" min="1" max="500" step="1" value="200">
+      <span class="slider-value" id="heightValue">200</span>
+    </div>
     <div class="control-item">
       <label class="slider-label" for="blurSlider">Blur: </label>
       <input class="slider" type="range" id="blurSlider" min="0" max="9.9" step="0.1" value="1">
@@ -110,10 +126,25 @@
         this.dragBoundary = 0; // Viewport boundary offset
 
         this.mouse = { x: 0, y: 0 };
-        this.mouseUsed = false;
         
         this.createElement();
         this.setupEventListeners();
+        this.updateShader();
+      }
+
+      updateDimension(width, height) {
+        this.width = width;
+        this.height = height;
+        this.container.style.width = width + "px";
+        this.container.style.height = height + "px";
+        this.svg.setAttribute("width", width.toString());
+        this.svg.setAttribute("height", height.toString());
+        this.filter.setAttribute("width", width.toString());
+        this.filter.setAttribute("height", height.toString());
+        this.feImage.setAttribute("width", width.toString());
+        this.feImage.setAttribute("height", height.toString());
+        this.canvas.width = width * this.canvasDPI;
+        this.canvas.height = height * this.canvasDPI;
         this.updateShader();
       }
 
@@ -129,12 +160,13 @@
           height: ${this.height}px;
           overflow: hidden;
           border-radius: 150px;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25), 0 -10px 25px inset rgba(0, 0, 0, 0.15);
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25), 0 -5px 10px inset rgba(0, 0, 0, 0.15);
           cursor: grab;
           backdrop-filter: url(#${this.id}_filter) blur(1px) contrast(1.2) brightness(1.05) saturate(1.1);
           z-index: 9999;
           pointer-events: auto;
         `;
+        // box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25), 0 -10px 25px inset rgba(0, 0, 0, 0.15);
 
         // Create SVG filter
         this.svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -150,14 +182,14 @@
         `;
 
         const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-        const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
-        filter.setAttribute("id", `${this.id}_filter`);
-        filter.setAttribute("filterUnits", "userSpaceOnUse");
-        filter.setAttribute("colorInterpolationFilters", "sRGB");
-        filter.setAttribute("x", "0");
-        filter.setAttribute("y", "0");
-        filter.setAttribute("width", this.width.toString());
-        filter.setAttribute("height", this.height.toString());
+        this.filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+        this.filter.setAttribute("id", `${this.id}_filter`);
+        this.filter.setAttribute("filterUnits", "userSpaceOnUse");
+        this.filter.setAttribute("colorInterpolationFilters", "sRGB");
+        this.filter.setAttribute("x", "0");
+        this.filter.setAttribute("y", "0");
+        this.filter.setAttribute("width", this.width.toString());
+        this.filter.setAttribute("height", this.height.toString());
 
         this.feImage = document.createElementNS("http://www.w3.org/2000/svg", "feImage");
         this.feImage.setAttribute("id", `${this.id}_map`);
@@ -170,9 +202,9 @@
         this.feDisplacementMap.setAttribute("xChannelSelector", "R");
         this.feDisplacementMap.setAttribute("yChannelSelector", "G");
 
-        filter.appendChild(this.feImage);
-        filter.appendChild(this.feDisplacementMap);
-        defs.appendChild(filter);
+        this.filter.appendChild(this.feImage);
+        this.filter.appendChild(this.feDisplacementMap);
+        defs.appendChild(this.filter);
         this.svg.appendChild(defs);
 
         // Create canvas for displacement map (hidden)
@@ -207,30 +239,30 @@
         let startX, startY, initialX, initialY;
 
         // util & events handlers
-        function getEventPosition(e) {
-          if (e.touches && e.touches.length > 0) {
-            return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-          } else if (e.changedTouches && e.changedTouches.length > 0) {
-            return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        const getEventPosition = (event) => {
+          if (event.touches && event.touches.length > 0) {
+            return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+          } else if (event.changedTouches && event.changedTouches.length > 0) {
+            return { x: event.changedTouches[0].clientX, y: event.changedTouches[0].clientY };
           } else {
-            return { x: e.clientX, y: e.clientY };
+            return { x: event.clientX, y: event.clientY };
           }
         }
 
-        function mouseDown(e, self) {
-          const pos = getEventPosition(e);
+        const mouseDown = (event) => {
+          const pos = getEventPosition(event);
           isDragging = true;
-          self.container.style.cursor = "grabbing";
+          this.container.style.cursor = "grabbing";
           startX = pos.x;
           startY = pos.y;
-          const rect = self.container.getBoundingClientRect();
+          const rect = this.container.getBoundingClientRect();
           initialX = rect.left;
           initialY = rect.top;
-          e.preventDefault();
+          event.preventDefault();
         }
 
-        function mouseMove(e, self) {
-          const pos = getEventPosition(e);
+        const mouseMove = (event) => {
+          const pos = getEventPosition(event);
 
           if (isDragging) {
             const deltaX = pos.x - startX;
@@ -239,36 +271,31 @@
             const newX = initialX + deltaX;
             const newY = initialY + deltaY;
 
-            const constrained = self.constrainPosition(newX, newY);
+            const constrained = this.constrainPosition(newX, newY);
 
-            self.container.style.left = constrained.x + "px";
-            self.container.style.top = constrained.y + "px";
-            self.container.style.transform = "none";
+            this.container.style.left = constrained.x + "px";
+            this.container.style.top = constrained.y + "px";
+            this.container.style.transform = "none";
           }
 
-          const rect = self.container.getBoundingClientRect();
-          self.mouse.x = (pos.x - rect.left) / rect.width;
-          self.mouse.y = (pos.y - rect.top) / rect.height;
-
-          if (self.mouseUsed) {
-            self.updateShader();
-          }
+          const rect = this.container.getBoundingClientRect();
+          this.mouse.x = (pos.x - rect.left) / rect.width;
+          this.mouse.y = (pos.y - rect.top) / rect.height;
         }
 
-        function mouseUp(e, self) {
+        const mouseUp = (event) => {
           isDragging = false;
-          self.container.style.cursor = "grab";
         }
 
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         if (isTouchDevice) {
-          this.container.addEventListener("touchstart", (e) => mouseDown(e, this), { passive: false });
-          document.addEventListener("touchmove", (e) => mouseMove(e, this), { passive: false });
-          document.addEventListener("touchend", (e) => mouseUp(e, this));
+          this.container.addEventListener("touchstart", (e) => mouseDown(e), { passive: false });
+          document.addEventListener("touchmove", (e) => mouseMove(e), { passive: false });
+          document.addEventListener("touchend", (e) => mouseUp(e));
         } else {
-          this.container.addEventListener("mousedown", (e) =>  mouseDown(e, this));
-          document.addEventListener("mousemove", (e) => mouseMove(e, this));
-          document.addEventListener("mouseup", (e) => mouseUp(e, this));
+          this.container.addEventListener("mousedown", (e) =>  mouseDown(e));
+          document.addEventListener("mousemove", (e) => mouseMove(e));
+          document.addEventListener("mouseup", (e) => mouseUp(e));
         }
 
         // Handle window resize to maintain constraints
@@ -287,12 +314,9 @@
       updateShader() {
         const mouseProxy = new Proxy(this.mouse, {
           get: (target, prop) => {
-            this.mouseUsed = true;
             return target[prop];
           }
         });
-
-        this.mouseUsed = false;
 
         const w = this.width * this.canvasDPI;
         const h = this.height * this.canvasDPI;
@@ -308,8 +332,8 @@
             { x: x / w, y: y / h },
             mouseProxy
           );
-          const dx = pos.x * w - x + 12; // change from original version
-          const dy = pos.y * h - y + 12; // change from original version
+          const dx = pos.x * w - x + 15; // change from original version
+          const dy = pos.y * h - y + 15; // change from original version
           maxScale = Math.max(maxScale, Math.abs(dx), Math.abs(dy));
           rawValues.push(dx, dy);
         }
@@ -337,18 +361,21 @@
       }
 
       destroy() {
-        this.svg.remove();
-        this.container.remove();
-        this.canvas.remove();
+        this.svg?.remove();
+        this.container?.remove();
+        this.canvas?.remove();
       }
     }
 
     // Create the liquid glass effect
-    function createLiquidGlass() {
+    function createLiquidGlass(
+      width = parseInt(document.getElementById("widthSlider").value),
+      height = parseInt(document.getElementById("heightSlider").value)
+    ) {
       // Create shader
       const shader = new Shader({
-        width: 300,
-        height: 200,
+        width,
+        height,
         fragment: (uv, mouse) => {
           const ix = uv.x - 0.5;
           const iy = uv.y - 0.5;
@@ -365,71 +392,60 @@
         }
       });
 
-      document.getElementById("blurSlider").addEventListener("input", (e) => {
-        const blurAmount = parseFloat(e.target.value).toFixed(1); // Always show one decimal
-        document.getElementById("blurValue").textContent = blurAmount;
+      // width and height
+      function dimensionChangeHandler(width, height) {
+        console.log(width, height);
+        window.liquidGlass.updateDimension(width, height);
+      }
 
-        // Get the contrast value from the slider
-        const contrastAmount = parseFloat(document.getElementById("contrastSlider").value).toFixed(1);
-
-        if (window.liquidGlass && window.liquidGlass.container) {
-          const container = window.liquidGlass.container;
-          const currentFilter = container.style.backdropFilter || "";
-
-          // Default fallback values for brightness and saturate
-          let brightness = "1.05";
-          let saturate = "1.1";
-
-          // Try to extract the existing values using RegExp
-          const match = currentFilter.match(/contrast\(([^)]+)\).*brightness\(([^)]+)\).*saturate\(([^)]+)\)/);
-          if (match) {
-            brightness = match[2];
-            saturate = match[3];
-          }
-
-          // Apply updated blur and contrast while preserving other values
-          container.style.backdropFilter = `
-            url(#${window.liquidGlass.id}_filter)
-            blur(${blurAmount}px)
-            contrast(${contrastAmount})
-            brightness(${brightness})
-            saturate(${saturate})
-          `;
-        }
+      document.getElementById("widthSlider").addEventListener("input", (event) => {
+        document.getElementById("widthValue").textContent = event.target.value;
+        dimensionChangeHandler(event.target.value, parseInt(document.getElementById("heightSlider").value));
       });
 
-
-      document.getElementById("contrastSlider").addEventListener("input", (e) => {
-        const contrastAmount = parseFloat(e.target.value).toFixed(1); // Show one decimal place
-        document.getElementById("contrastValue").textContent = contrastAmount;
-
-        if (window.liquidGlass && window.liquidGlass.container) {
-          const blurAmount = parseFloat(document.getElementById("blurSlider").value).toFixed(1); // Get current blur value
-          const container = window.liquidGlass.container;
-
-          const currentFilter = container.style.backdropFilter || "";
-
-          // Default fallback values for brightness and saturate
-          let brightness = "1.05";
-          let saturate = "1.1";
-
-          // Try to extract the existing values using RegExp
-          const match = currentFilter.match(/contrast\(([^)]+)\).*brightness\(([^)]+)\).*saturate\(([^)]+)\)/);
-          if (match) {
-            brightness = match[2];
-            saturate = match[3];
-          }
-
-          // Apply updated contrast and blur while preserving other values
-          container.style.backdropFilter = `
-            url(#${window.liquidGlass.id}_filter)
-            blur(${blurAmount}px)
-            contrast(${contrastAmount})
-            brightness(${brightness})
-            saturate(${saturate})
-          `;
-        }
+      document.getElementById("heightSlider").addEventListener("input", (event) => {
+        document.getElementById("heightValue").textContent = event.target.value;
+        dimensionChangeHandler(parseInt(document.getElementById("widthSlider").value), event.target.value);
       });
+
+      // blur and contrast
+      function decimalSliderChangeHandler(event, elementId) {
+        const value = parseFloat(event.target.value).toFixed(1); // Always show one decimal
+        document.getElementById(elementId).textContent = value;
+
+
+        setTimeout(() => {
+          if (window.liquidGlass && window.liquidGlass.container) {
+            const container = window.liquidGlass.container;
+            const currentFilter = container.style.backdropFilter || "";
+
+            // Default fallback values for brightness and saturate
+            let blur = "1";
+            let contrast = "1.2";
+            let brightness = "1.05";
+            let saturate = "1.1";
+
+            // Try to extract the existing values using RegExp
+            const match = currentFilter.match(/brightness\(([^)]+)\).*saturate\(([^)]+)\)/);
+            if (match) {
+              brightness = match[1];
+              saturate = match[1];
+            }
+
+            // Apply updated blur and contrast while preserving other values
+            container.style.backdropFilter = `
+              url(#${window.liquidGlass.id}_filter)
+              blur(${parseFloat(document.getElementById("blurSlider").value).toFixed(1)}px)
+              contrast(${parseFloat(document.getElementById("contrastSlider").value).toFixed(1)})
+              brightness(${brightness})
+              saturate(${saturate})
+            `;
+          }
+        });
+      }
+
+      document.getElementById("blurSlider").addEventListener("input", (event) => decimalSliderChangeHandler(event, "blurValue"));
+      document.getElementById("contrastSlider").addEventListener("input", (event) => decimalSliderChangeHandler(event, "contrastValue"));
 
       // Add to page
       shader.appendTo(document.body);
